@@ -233,19 +233,5 @@ public class MealGroupPurchaseController {
         }
     }
 
-    /**
-     * 사용자별 생성한 식사공동구매 조회 API (추가 기능)
-     * GET /meal-group-purchases/user/{userId}
-     */
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<MealGroupPurchaseResponseDto>> getMealGroupPurchasesByUser(
-            @PathVariable Integer userId) {
-        try {
-            // 이 기능을 위해서는 Service에 메서드를 추가해야 합니다
-            // 현재는 기본 기능만 구현했습니다
-            return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
+
 }
