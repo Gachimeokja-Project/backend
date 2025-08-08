@@ -3,6 +3,7 @@ package com.css.gachimeokja.domain.mealgroupurchase.controller;
 import com.css.gachimeokja.domain.mealgroupurchase.dto.MealGroupPurchaseRequestDto;
 import com.css.gachimeokja.domain.mealgroupurchase.dto.MealGroupPurchaseResponseDto;
 import com.css.gachimeokja.domain.mealgroupurchase.dto.MealGroupPurchaseDeleteResponseDto;
+import com.css.gachimeokja.domain.mealgroupurchase.dto.MealGroupPurchaseParticipationRequestDto;
 import com.css.gachimeokja.domain.mealgroupurchase.service.MealGroupPurchaseService;
 import com.css.gachimeokja.domain.user.entity.User;
 import com.css.gachimeokja.domain.user.repository.UserRepository;
@@ -126,6 +127,68 @@ public class MealGroupPurchaseController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             } else if (e.getMessage().contains("참여자가 있는")) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * 6. 식사공동구매 참여 API
+     * POST /meal-group-purchases/{id}
+     */
+    @PostMapping("/{id}")
+    public ResponseEntity<MealGroupPurchaseResponseDto> participate(
+            @PathVariable Integer id,
+            @AuthenticationPrincipal String socialId,
+            @RequestBody MealGroupPurchaseParticipationRequestDto request
+    ) {
+        try {
+            Optional<User> authenticatedUser = userRepository.findBySocialId(socialId);
+            if (authenticatedUser.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            int userId = Math.toIntExact(authenticatedUser.get().getId());
+            MealGroupPurchaseResponseDto response = mealGroupPurchaseService.participateInMealGroupPurchase(
+                    id, userId, request.getTotalOrderAmount());
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("찾을 수 없습니다")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            } else if (e.getMessage().contains("이미 참여")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * 7. 식사공동구매 참여 승인 API
+     * POST /meal-group-purchases/{id}/approve
+     */
+    @PostMapping("/{id}/approve")
+    public ResponseEntity<MealGroupPurchaseResponseDto> approve(
+            @PathVariable Integer id,
+            @AuthenticationPrincipal String socialId
+    ) {
+        try {
+            Optional<User> authenticatedUser = userRepository.findBySocialId(socialId);
+            if (authenticatedUser.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            int userId = Math.toIntExact(authenticatedUser.get().getId());
+            MealGroupPurchaseResponseDto response = mealGroupPurchaseService.approveParticipation(id, userId);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("찾을 수 없습니다")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            } else if (e.getMessage().contains("권한")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             } else {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
             }
