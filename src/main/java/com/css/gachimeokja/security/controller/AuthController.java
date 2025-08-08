@@ -33,9 +33,18 @@ public class AuthController {
         if (isUserExists) {
             String accessToken = jwtTokenProvider.createAccessToken(socialId);
             String refreshToken = jwtTokenProvider.createRefreshToken(socialId);
+
+            // 디버깅용 콘솔 출력
+            System.out.println("기존 사용자 로그인 - Access Token 발행: " + accessToken);
+            System.out.println("기존 사용자 로그인 - Refresh Token 발행: " + refreshToken);
+
             return ResponseEntity.ok(new TokenResponseDto(accessToken, refreshToken));
         } else {
             String tempToken = jwtTokenProvider.createTempToken(socialId);
+
+            // 디버깅용 콘솔 출력
+            System.out.println("신규 사용자 가입 - 임시 Token 발행: " + tempToken);
+
             return ResponseEntity.ok(new TokenResponseDto(tempToken, null));
         }
     }
