@@ -1,12 +1,16 @@
 package com.css.gachimeokja.domain.user.dto.request;
 
 import jakarta.validation.constraints.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 
 @Getter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class UserSignUpRequest {
     @NotBlank(message = "이름은 필수 입력 값입니다.")
     private String fullName;
