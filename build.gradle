@@ -30,7 +30,6 @@ dependencies {
     implementation 'org.springframework.security:spring-security-oauth2-client:6.5.2'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa:3.5.4'
     implementation 'jakarta.validation:jakarta.validation-api:3.1.1'
-    runtimeOnly 'com.mysql:mysql-connector-j'
 
     // lombok
     compileOnly 'org.projectlombok:lombok'
@@ -44,11 +43,14 @@ dependencies {
 
     // 데이터베이스
     runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'com.mysql:mysql-connector-j'
 
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+    implementation 'jakarta.validation:jakarta.validation-api:3.1.1'
 }
 
 test {
