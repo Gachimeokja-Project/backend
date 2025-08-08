@@ -3,13 +3,18 @@ package com.css.gachimeokja.domain.mealgroupurchase.controller;
 import com.css.gachimeokja.domain.mealgroupurchase.dto.MealGroupPurchaseRequestDto;
 import com.css.gachimeokja.domain.mealgroupurchase.dto.MealGroupPurchaseResponseDto;
 import com.css.gachimeokja.domain.mealgroupurchase.dto.MealGroupPurchaseDeleteResponseDto;
+import com.css.gachimeokja.domain.mealgroupurchase.dto.MealGroupPurchaseParticipationRequestDto;
 import com.css.gachimeokja.domain.mealgroupurchase.service.MealGroupPurchaseService;
+import com.css.gachimeokja.domain.user.entity.User;
+import com.css.gachimeokja.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/meal-group-purchases")
@@ -17,6 +22,7 @@ import java.util.List;
 public class MealGroupPurchaseController {
 
     private final MealGroupPurchaseService mealGroupPurchaseService;
+    private final UserRepository userRepository;
 
     /**
      * 1. 식사공동구매 리스트 조회 API
@@ -41,13 +47,18 @@ public class MealGroupPurchaseController {
     /**
      * 2. 식사공동구매 등록 API
      * POST /meal-group-purchases
-     * Header: X-User-Id (필수)
+     * 인증된 사용자(JWT)의 socialId를 사용
      */
     @PostMapping
     public ResponseEntity<MealGroupPurchaseResponseDto> createMealGroupPurchase(
-            @RequestHeader("X-User-Id") Integer userId,
+            @AuthenticationPrincipal String socialId,
             @RequestBody MealGroupPurchaseRequestDto requestDto) {
         try {
+            Optional<User> authenticatedUser = userRepository.findBySocialId(socialId);
+            if (authenticatedUser.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            int userId = Math.toIntExact(authenticatedUser.get().getId());
             // 요청 DTO에 사용자 ID 설정
             requestDto.setCreatorUserId(userId);
             MealGroupPurchaseResponseDto response = mealGroupPurchaseService.createMealGroupPurchase(requestDto);
@@ -62,14 +73,19 @@ public class MealGroupPurchaseController {
     /**
      * 3. 식사공동구매 수정 API
      * PATCH /meal-group-purchases/{id}
-     * Header: X-User-Id (필수)
+     * 인증된 사용자(JWT)의 socialId를 사용
      */
     @PatchMapping("/{id}")
     public ResponseEntity<MealGroupPurchaseResponseDto> updateMealGroupPurchase(
             @PathVariable Integer id,
-            @RequestHeader("X-User-Id") Integer userId,
+            @AuthenticationPrincipal String socialId,
             @RequestBody MealGroupPurchaseRequestDto requestDto) {
         try {
+            Optional<User> authenticatedUser = userRepository.findBySocialId(socialId);
+            if (authenticatedUser.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            int userId = Math.toIntExact(authenticatedUser.get().getId());
             // 요청 DTO에 사용자 ID 설정
             requestDto.setCreatorUserId(userId);
             MealGroupPurchaseResponseDto response = mealGroupPurchaseService.updateMealGroupPurchase(id, requestDto);
@@ -90,13 +106,18 @@ public class MealGroupPurchaseController {
     /**
      * 4. 식사공동구매 삭제 API
      * DELETE /meal-group-purchases/{id}
-     * Header: X-User-Id (필수)
+     * 인증된 사용자(JWT)의 socialId를 사용
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<MealGroupPurchaseDeleteResponseDto> deleteMealGroupPurchase(
             @PathVariable Integer id,
-            @RequestHeader("X-User-Id") Integer userId) {
+            @AuthenticationPrincipal String socialId) {
         try {
+            Optional<User> authenticatedUser = userRepository.findBySocialId(socialId);
+            if (authenticatedUser.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            int userId = Math.toIntExact(authenticatedUser.get().getId());
             MealGroupPurchaseDeleteResponseDto response = mealGroupPurchaseService.deleteMealGroupPurchase(id, userId);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
@@ -106,6 +127,68 @@ public class MealGroupPurchaseController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             } else if (e.getMessage().contains("참여자가 있는")) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * 6. 식사공동구매 참여 API
+     * POST /meal-group-purchases/{id}
+     */
+    @PostMapping("/{id}")
+    public ResponseEntity<MealGroupPurchaseResponseDto> participate(
+            @PathVariable Integer id,
+            @AuthenticationPrincipal String socialId,
+            @RequestBody MealGroupPurchaseParticipationRequestDto request
+    ) {
+        try {
+            Optional<User> authenticatedUser = userRepository.findBySocialId(socialId);
+            if (authenticatedUser.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            int userId = Math.toIntExact(authenticatedUser.get().getId());
+            MealGroupPurchaseResponseDto response = mealGroupPurchaseService.participateInMealGroupPurchase(
+                    id, userId, request.getTotalOrderAmount());
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("찾을 수 없습니다")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            } else if (e.getMessage().contains("이미 참여")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * 7. 식사공동구매 참여 승인 API
+     * POST /meal-group-purchases/{id}/approve
+     */
+    @PostMapping("/{id}/approve")
+    public ResponseEntity<MealGroupPurchaseResponseDto> approve(
+            @PathVariable Integer id,
+            @AuthenticationPrincipal String socialId
+    ) {
+        try {
+            Optional<User> authenticatedUser = userRepository.findBySocialId(socialId);
+            if (authenticatedUser.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            int userId = Math.toIntExact(authenticatedUser.get().getId());
+            MealGroupPurchaseResponseDto response = mealGroupPurchaseService.approveParticipation(id, userId);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("찾을 수 없습니다")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            } else if (e.getMessage().contains("권한")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             } else {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
             }
@@ -150,19 +233,5 @@ public class MealGroupPurchaseController {
         }
     }
 
-    /**
-     * 사용자별 생성한 식사공동구매 조회 API (추가 기능)
-     * GET /meal-group-purchases/user/{userId}
-     */
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<MealGroupPurchaseResponseDto>> getMealGroupPurchasesByUser(
-            @PathVariable Integer userId) {
-        try {
-            // 이 기능을 위해서는 Service에 메서드를 추가해야 합니다
-            // 현재는 기본 기능만 구현했습니다
-            return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
+
 }

@@ -5,6 +5,8 @@ import com.css.gachimeokja.domain.mealgroupurchase.dto.MealGroupPurchaseResponse
 import com.css.gachimeokja.domain.mealgroupurchase.dto.MealGroupPurchaseDeleteResponseDto;
 import com.css.gachimeokja.domain.mealgroupurchase.entity.MealGroupPurchase;
 import com.css.gachimeokja.domain.mealgroupurchase.repository.MealGroupPurchaseRepository;
+import com.css.gachimeokja.domain.mealgroupurchase.entity.MealGroupPurchaseParticipant;
+import com.css.gachimeokja.domain.mealgroupurchase.repository.MealGroupPurchaseParticipantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 public class MealGroupPurchaseService {
 
     private final MealGroupPurchaseRepository mealGroupPurchaseRepository;
+    private final MealGroupPurchaseParticipantRepository participantRepository;
 
     /**
      * 식사공동구매 리스트 조회
@@ -139,6 +142,61 @@ public class MealGroupPurchaseService {
                 .deletedId(deletedId)
                 .deletedTitle(deletedTitle)
                 .build();
+    }
+
+    /**
+     * 식사공동구매 참여 신청
+     */
+    @Transactional
+    public MealGroupPurchaseResponseDto participateInMealGroupPurchase(Integer mealGroupPurchaseId, Integer userId, Integer totalOrderAmount) {
+        MealGroupPurchase purchase = mealGroupPurchaseRepository.findByIdIfExists(mealGroupPurchaseId)
+                .orElseThrow(() -> new RuntimeException("해당 식사공동구매를 찾을 수 없습니다. ID: " + mealGroupPurchaseId));
+
+        // 이미 참여했는지 체크
+        participantRepository.findByMealGroupPurchaseIdAndUserId(mealGroupPurchaseId, userId)
+                .ifPresent(p -> { throw new RuntimeException("이미 참여한 사용자입니다."); });
+
+        // 참가자 생성 및 저장
+        MealGroupPurchaseParticipant participant = MealGroupPurchaseParticipant.builder()
+                .mealGroupPurchaseId(mealGroupPurchaseId)
+                .userId(userId)
+                .totalOrderAmount(totalOrderAmount)
+                .build();
+        participantRepository.save(participant);
+
+        // 공동구매 집계 업데이트 (대기 중이지만 우선 합산)
+        purchase.setCurrentMembers(purchase.getCurrentMembers() + 1);
+        purchase.setCurrentAmount(purchase.getCurrentAmount() + totalOrderAmount);
+        purchase.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
+
+        MealGroupPurchase updated = mealGroupPurchaseRepository.save(purchase);
+        return MealGroupPurchaseResponseDto.from(updated);
+    }
+
+    /**
+     * 식사공동구매 참여 승인
+     */
+    @Transactional
+    public MealGroupPurchaseResponseDto approveParticipation(Integer mealGroupPurchaseId, Integer approverUserId) {
+        MealGroupPurchase purchase = mealGroupPurchaseRepository.findByIdIfExists(mealGroupPurchaseId)
+                .orElseThrow(() -> new RuntimeException("해당 식사공동구매를 찾을 수 없습니다. ID: " + mealGroupPurchaseId));
+
+        if (!purchase.getCreatorUserId().equals(approverUserId)) {
+            throw new RuntimeException("승인 권한이 없습니다.");
+        }
+
+        // 대기 중 참여자 상태 APPROVED 로 변경
+        List<MealGroupPurchaseParticipant> participants = participantRepository.findByMealGroupPurchaseId(mealGroupPurchaseId);
+        for (MealGroupPurchaseParticipant participant : participants) {
+            if ("PENDING".equals(participant.getStatus())) {
+                participant.setStatus("APPROVED");
+            }
+        }
+        participantRepository.saveAll(participants);
+
+        purchase.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
+        MealGroupPurchase updated = mealGroupPurchaseRepository.save(purchase);
+        return MealGroupPurchaseResponseDto.from(updated);
     }
 
     /**
