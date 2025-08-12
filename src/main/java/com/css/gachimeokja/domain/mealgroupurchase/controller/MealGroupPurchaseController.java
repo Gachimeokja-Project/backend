@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/meal-group-purchases")
+@RequestMapping("/api/v1/meal-group-purchases")
 @RequiredArgsConstructor
 public class MealGroupPurchaseController {
 

@@ -52,8 +52,8 @@ public class JwtTokenProvider {
         return createToken(socialId, REFRESH_TOKEN_EXPIRE_TIME);
     }
 
-    private String createToken(String userId, long expireTime) {
-        Claims claims = Jwts.claims().setSubject(userId);
+    private String createToken(String socialId, long expireTime) {
+        Claims claims = Jwts.claims().setSubject(socialId);
         Date now = new Date();
         Date validity = new Date(now.getTime() + expireTime);
 
