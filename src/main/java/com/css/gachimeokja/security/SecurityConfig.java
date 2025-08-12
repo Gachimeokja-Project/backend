@@ -44,8 +44,7 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        // 프론트엔드 URL을 정확히 명시
-        config.addAllowedOrigin("http://localhost:3000");
+        config.addAllowedOriginPattern("http://localhost:[*]");
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
         source.registerCorsConfiguration("/**", config);
