@@ -1,8 +1,10 @@
 package com.css.gachimeokja.domain.user.controller;
 
 import com.css.gachimeokja.domain.user.dto.request.UserSignUpRequest;
+import com.css.gachimeokja.domain.user.entity.User;
+import com.css.gachimeokja.domain.user.repository.UserRepository;
 import com.css.gachimeokja.domain.user.service.UserService;
-import com.css.gachimeokja.security.dto.TokenResponseDto;
+import com.css.gachimeokja.security.dto.LoginResponseDto;
 import com.css.gachimeokja.security.jwt.JwtTokenProvider;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,10 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
     private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
 
     // 카카오 OAuth 로그인 후 최초 회원가입
     @PostMapping("/signup")
-    public ResponseEntity<TokenResponseDto> signUp(
+    public ResponseEntity<LoginResponseDto> signUp(
         @AuthenticationPrincipal String socialId,
         @RequestBody @Valid UserSignUpRequest request) {
 
@@ -33,7 +36,15 @@ public class UserController {
             String accessToken = jwtTokenProvider.createAccessToken(socialId);
             String refreshToken = jwtTokenProvider.createRefreshToken(socialId);
 
-            TokenResponseDto tokenResponse = new TokenResponseDto(accessToken, refreshToken);
+            User newUser = userRepository.findById(newUserId)
+                    .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+            LoginResponseDto tokenResponse = LoginResponseDto.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .nickname(newUser.getNickname()) // 새로 가입한 사용자의 닉네임을 포함
+                    .build();
+
             return ResponseEntity.ok(tokenResponse);
 
         } catch (IllegalArgumentException e) {
