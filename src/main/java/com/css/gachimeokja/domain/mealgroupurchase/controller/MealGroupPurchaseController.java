@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/meal-group-purchases")
+@RequestMapping("/api/v1/meal-group-purchases")
 @RequiredArgsConstructor
 public class MealGroupPurchaseController {
 
