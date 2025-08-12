@@ -24,15 +24,44 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux:3.5.4'
+    implementation 'org.springframework.boot:spring-boot-starter-security:3.5.4'
+    implementation 'org.springframework.security:spring-security-oauth2-client:6.5.2'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa:3.5.4'
+    implementation 'jakarta.validation:jakarta.validation-api:3.1.1'
+
+    // lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+
+    // 테스트
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'com.h2database:h2'
+
+    // 데이터베이스
+    runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+
+    // JWT
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+    implementation 'jakarta.validation:jakarta.validation-api:3.1.1'
 }
 
-tasks.named('test') {
+test {
     useJUnitPlatform()
+
+    // 테스트 프로파일 활성화
+    systemProperty 'spring.profiles.active', 'test'
+
+    // 테스트 리포트 생성
+    reports {
+        junitXml.required = true
+        html.required = true
+    }
 }
